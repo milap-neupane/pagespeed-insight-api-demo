@@ -1,0 +1,97 @@
+<html>
+    <head>
+        <span class="pln">
+        </span><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic"><span class="pln">
+        </span><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css"><span class="pln">
+        </span><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css"><span class="pln">
+        </span>
+    </head>
+    <body>
+        <div class="container" id="main">
+            <h1>PageSpeed Insights API Demo</h1>
+            <form onsubmit="return getPageSpeedInsights()">
+                <div>
+                <label>Enter URL to Test Page Speed:</label>
+                <input id="url" name="url" type="text">
+                <button>submit</button>
+                </div>
+            </form>
+            <p id="loading"></p>
+            <div class="container" id="results">
+                
+            </div>
+            
+        </div>
+    </body>    
+</html>
+
+<script>
+    function getPageSpeedInsights() {
+        const inputURL = document.getElementById('url').value;
+        document.getElementById('loading').innerHTML = "Please wait...Running the PageSpeed Insights..."
+        run(inputURL);
+        return false
+    }
+
+    function run(inputURL) {
+      document.getElementById("results").innerHTML = ""
+      const url = setUpQuery(inputURL);
+      fetch(url)
+        .then(response => response.json())
+        .then(json => {
+          const cruxMetrics = {
+            "First Contentful Paint": json.loadingExperience.metrics.FIRST_CONTENTFUL_PAINT_MS.category,
+            "First Input Delay": json.loadingExperience.metrics.FIRST_INPUT_DELAY_MS.category
+          };
+          console.log("cruxMetrics", cruxMetrics);
+          showCruxContent(cruxMetrics);
+          const lighthouse = json.lighthouseResult;
+          const lighthouseMetrics = {
+            'First Contentful Paint': lighthouse.audits['first-contentful-paint'].displayValue,
+            'Speed Index': lighthouse.audits['speed-index'].displayValue,
+            'Time To Interactive': lighthouse.audits['interactive'].displayValue,
+            'First Meaningful Paint': lighthouse.audits['first-meaningful-paint'].displayValue,
+            'Total Blocking Time': lighthouse.audits['total-blocking-time'].displayValue,
+          };
+          console.log("lighthouseMetrics",lighthouseMetrics);
+          showLighthouseContent(lighthouseMetrics);
+        });
+    }
+    
+    function setUpQuery(setUpQuery) {
+      const api = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
+      const parameters = {
+        url: encodeURIComponent(setUpQuery)
+      };
+      let query = `${api}?`;
+      for (key in parameters) {
+        query += `${key}=${parameters[key]}`;
+      }
+      return query;
+    }
+    
+    function showCruxContent(cruxMetrics) {
+      document.getElementById("loading").innerHTML = ""
+      const cruxHeader = document.createElement('h2');
+      cruxHeader.textContent = "Chrome User Experience Report Results";
+      document.getElementById("results").appendChild(cruxHeader);
+      for (key in cruxMetrics) {
+        const p = document.createElement('p');
+        p.textContent = `${key}: ${cruxMetrics[key]}`;
+        document.getElementById("results").appendChild(p);
+      }
+    }
+    
+    function showLighthouseContent(lighthouseMetrics) {
+      document.getElementById("loading").innerHTML = ""
+      const lighthouseHeader = document.createElement('h2');
+      lighthouseHeader.textContent = "Lighthouse Results";
+      document.getElementById("results").appendChild(lighthouseHeader);
+      for (key in lighthouseMetrics) {
+        const p = document.createElement('p');
+        p.textContent = `${key}: ${lighthouseMetrics[key]}`;
+        document.getElementById("results").appendChild(p);
+      }
+    }
+    
+    </script>
