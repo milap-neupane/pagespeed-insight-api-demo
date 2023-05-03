@@ -1,73 +1,86 @@
 <html>
-    <head>
-        <span class="pln">
-        </span><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic"><span class="pln">
-        </span><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css"><span class="pln">
-        </span><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css"><span class="pln">
-        </span>
-    </head>
-    <body>
-        <div class="container" id="main">
-            <h1>PageSpeed Insights API Demo</h1>
-            <form onsubmit="return getPageSpeedInsights()">
-                <div>
-                <label>Enter URL to Test Page Speed:</label>
-                <input id="url" name="url" type="text">
-                <button>submit</button>
-                </div>
-            </form>
-            <p id="loading"></p>
-            <div class="container" id="results">
-                
-            </div>
-            
-        </div>
-    </body>    
-</html>
+  <head>
+      <span class="pln">
+      </span><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic"><span class="pln">
+      </span><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css"><span class="pln">
+      </span><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css"><span class="pln">
+      </span>
+  </head>
+  <body>
+      <div class="container" id="main">
+          <h1>PageSpeed Insights API Demo</h1>
+          <form onsubmit="return getPageSpeedInsights()">
+              <div>
+              <label>Enter URL to Test Page Speed:</label>
+              <input id="url" name="url" type="text">
+              <button>submit</button>
+              </div>
+          </form>
+          <p id="loading"></p>
+          <div class="container" id="results">
+              
+          </div>
+      </div>
+  </body>
 
-<script>
+  <script>
+    // Replace with the API key
+    const apiKey = ""
+
     function getPageSpeedInsights() {
         const inputURL = document.getElementById('url').value;
         document.getElementById('loading').innerHTML = "Please wait...Running the PageSpeed Insights..."
-        run(inputURL);
+        document.getElementById("results").innerHTML = ""
+
+        const url = buildQueryURL(inputURL, apiKey);
+        fetch(url)
+          .then(response => response.json())
+          .then(displayResult);
+        
         return false
     }
 
-    function run(inputURL) {
-      document.getElementById("results").innerHTML = ""
-      const url = setUpQuery(inputURL);
-      fetch(url)
-        .then(response => response.json())
-        .then(json => {
-          const cruxMetrics = {
-            "First Contentful Paint": json.loadingExperience.metrics.FIRST_CONTENTFUL_PAINT_MS.category,
-            "First Input Delay": json.loadingExperience.metrics.FIRST_INPUT_DELAY_MS.category
-          };
-          console.log("cruxMetrics", cruxMetrics);
-          showCruxContent(cruxMetrics);
-          const lighthouse = json.lighthouseResult;
-          const lighthouseMetrics = {
-            'First Contentful Paint': lighthouse.audits['first-contentful-paint'].displayValue,
-            'Speed Index': lighthouse.audits['speed-index'].displayValue,
-            'Time To Interactive': lighthouse.audits['interactive'].displayValue,
-            'First Meaningful Paint': lighthouse.audits['first-meaningful-paint'].displayValue,
-            'Total Blocking Time': lighthouse.audits['total-blocking-time'].displayValue,
-          };
-          console.log("lighthouseMetrics",lighthouseMetrics);
-          showLighthouseContent(lighthouseMetrics);
-        });
-    }
-    
-    function setUpQuery(setUpQuery) {
-      const api = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
-      const parameters = {
-        url: encodeURIComponent(setUpQuery)
+    function displayResult(json) {
+      // Read the crux metrics
+      const cruxMetrics = {
+        "Cumulative Layout Shift Score": json.loadingExperience.metrics.CUMULATIVE_LAYOUT_SHIFT_SCORE.category,
+        "First Contentful Paint": json.loadingExperience.metrics.FIRST_CONTENTFUL_PAINT_MS.category,
       };
-      let query = `${api}?`;
-      for (key in parameters) {
-        query += `${key}=${parameters[key]}`;
+      // Display the crux content
+      showCruxContent(cruxMetrics);
+      // Read the lighthouseResult metrics
+      const lighthouse = json.lighthouseResult;
+      const lighthouseMetrics = {
+        'Timing': lighthouse.timing.total,
+        'Total Blocking Time': lighthouse.audits['total-blocking-time'].displayValue,
+        'First Contentful Paint': lighthouse.audits['first-contentful-paint'].displayValue,
+        'Speed Index': lighthouse.audits['speed-index'].displayValue,
+        'Time To Interactive': lighthouse.audits['interactive'].displayValue,
+        'First Meaningful Paint': lighthouse.audits['first-meaningful-paint'].displayValue,
+      };
+      // Display the Lighthouse content
+      showLighthouseContent(lighthouseMetrics);
+
+      // Screenshot
+      showFullPageScreenshot(lighthouse.fullPageScreenshot)
+    }
+  
+    function buildQueryURL(url, key) {    
+      const api = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
+      let query = `${api}?url=${encodeURIComponent(url)}`;
+      if(key != ""){
+        query += `&key=${key}`
       }
       return query;
+    }
+
+    function showFullPageScreenshot(fullPageScreenshot) {
+      const lighthouseHeader = document.createElement('h2');
+      lighthouseHeader.textContent = "Screenshot";
+      document.getElementById("results").appendChild(lighthouseHeader);
+      var img = document.createElement('img');
+      img.src = fullPageScreenshot.screenshot.data;
+      document.getElementById("results").appendChild(img);
     }
     
     function showCruxContent(cruxMetrics) {
@@ -75,11 +88,25 @@
       const cruxHeader = document.createElement('h2');
       cruxHeader.textContent = "Chrome User Experience Report Results";
       document.getElementById("results").appendChild(cruxHeader);
+
+      var c, r, t;
+      t = document.createElement('table');
+      r = t.insertRow(0);
+      c = r.insertCell(0);
+      c.innerHTML = "Metrics";
+      c = r.insertCell(1);
+      c.innerHTML = "Value";
+
+      var counter = 1
       for (key in cruxMetrics) {
-        const p = document.createElement('p');
-        p.textContent = `${key}: ${cruxMetrics[key]}`;
-        document.getElementById("results").appendChild(p);
+        r = t.insertRow(counter);
+        c = r.insertCell(0);
+        c.innerHTML = key;
+        c = r.insertCell(1);
+        c.innerHTML = cruxMetrics[key];
+        counter++
       }
+      document.getElementById("results").appendChild(t);
     }
     
     function showLighthouseContent(lighthouseMetrics) {
@@ -87,11 +114,25 @@
       const lighthouseHeader = document.createElement('h2');
       lighthouseHeader.textContent = "Lighthouse Results";
       document.getElementById("results").appendChild(lighthouseHeader);
+
+      var c, r, t;
+      t = document.createElement('table');
+      r = t.insertRow(0);
+      c = r.insertCell(0);
+      c.innerHTML = "Metrics";
+      c = r.insertCell(1);
+      c.innerHTML = "Value";
+
+      var counter = 1
       for (key in lighthouseMetrics) {
-        const p = document.createElement('p');
-        p.textContent = `${key}: ${lighthouseMetrics[key]}`;
-        document.getElementById("results").appendChild(p);
+        r = t.insertRow(counter);
+        c = r.insertCell(0);
+        c.innerHTML = key;
+        c = r.insertCell(1);
+        c.innerHTML = lighthouseMetrics[key];
+        counter++
       }
+      document.getElementById("results").appendChild(t);
     }
-    
-    </script>
+  </script>
+</html>
